@@ -1,39 +1,37 @@
-[![Build Status](https://travis-ci.org/ogier/pflag.png?branch=master)](https://travis-ci.org/ogier/pflag)
-
 ## Description
 
-pflag is a drop-in replacement for Go's flag package, implementing
+opflag is a drop-in replacement for Go's flag package, implementing
 POSIX/GNU-style --flags.
 
-pflag is compatible with the [GNU extensions to the POSIX recommendations
+opflag is compatible with the [GNU extensions to the POSIX recommendations
 for command-line options][1]. For a more precise description, see the
 "Command-line flag syntax" section below.
 
 [1]: http://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 
-pflag is available under the same style of BSD license as the Go language,
+opflag is available under the same style of BSD license as the Go language,
 which can be found in the LICENSE file.
 
 ## Installation
 
-pflag is available using the standard `go get` command.
+opflag is available using the standard `go get` command.
 
 Install by running:
 
-    go get github.com/ogier/pflag
+    go get github.com/xxxserxxx/opflag
 
 Run tests by running:
 
-    go test github.com/ogier/pflag
+    go test github.com/xxxserxxx/opflag
 
 ## Usage
 
-pflag is a drop-in replacement of Go's native flag package. If you import
-pflag under the name "flag" then all code should continue to function
+opflag is a drop-in replacement of Go's native flag package. If you import
+opflag under the name "flag" then all code should continue to function
 with no changes.
 
 ``` go
-import flag "github.com/ogier/pflag"
+import flag "github.com/xxxserxxx/opflag"
 ```
 
 There is one exception to this: if you directly instantiate the Flag struct
@@ -88,7 +86,7 @@ After parsing, the arguments after the flag are available as the
 slice flag.Args() or individually as flag.Arg(i).
 The arguments are indexed from 0 through flag.NArg()-1.
 
-The pflag package also defines some new functions that are not in flag,
+The opflag package also defines some new functions that are not in flag,
 that give one-letter shorthands for flags. You can use these by appending
 'P' to the name of any function that defines a flag.
 
@@ -147,11 +145,11 @@ Duration flags accept any input valid for time.ParseDuration.
 
 ## More info
 
-You can see the full reference documentation of the pflag package
+You can see the full reference documentation of the opflag package
 [at godoc.org][3], or through go's standard documentation system by
 running `godoc -http=:6060` and browsing to
-[http://localhost:6060/pkg/github.com/ogier/pflag][2] after
+[http://localhost:6060/pkg/github.com/xxxserxxx/opflag][2] after
 installation.
 
-[2]: http://localhost:6060/pkg/github.com/ogier/pflag
-[3]: http://godoc.org/github.com/ogier/pflag
+[2]: http://localhost:6060/pkg/github.com/xxxserxxx/opflag
+[3]: http://godoc.org/github.com/xxxserxxx/opflag

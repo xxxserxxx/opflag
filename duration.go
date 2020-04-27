@@ -1,4 +1,4 @@
-package pflag
+package opflag
 
 import "time"
 

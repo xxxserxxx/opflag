@@ -3,20 +3,20 @@
 // license that can be found in the LICENSE file.
 
 /*
-	pflag is a drop-in replacement for Go's flag package, implementing
+	opflag is a drop-in replacement for Go's flag package, implementing
 	POSIX/GNU-style --flags.
 
-	pflag is compatible with the GNU extensions to the POSIX recommendations
+	opflag is compatible with the GNU extensions to the POSIX recommendations
 	for command-line options. See
 	http://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 
 	Usage:
 
-	pflag is a drop-in replacement of Go's native flag package. If you import
-	pflag under the name "flag" then all code should continue to function
+	opflag is a drop-in replacement of Go's native flag package. If you import
+	opflag under the name "flag" then all code should continue to function
 	with no changes.
 
-		import flag "github.com/ogier/pflag"
+		import flag "github.com/ogier/opflag"
 
 	There is one exception to this: if you directly instantiate the Flag struct
 	there is one more field "Shorthand" that you will need to set.
@@ -51,7 +51,7 @@
 	slice flag.Args() or individually as flag.Arg(i).
 	The arguments are indexed from 0 through flag.NArg()-1.
 
-	The pflag package also defines some new functions that are not in flag,
+	The opflag package also defines some new functions that are not in flag,
 	that give one-letter shorthands for flags. You can use these by appending
 	'P' to the name of any function that defines a flag.
 		var ip = flag.IntP("flagname", "f", 1234, "help message")
@@ -96,7 +96,7 @@
 	analogous to the top-level functions for the command-line
 	flag set.
 */
-package pflag
+package opflag
 
 import (
 	"errors"
@@ -108,7 +108,10 @@ import (
 )
 
 // ErrHelp is the error returned if the flag -help is invoked but no such flag is defined.
-var ErrHelp = errors.New("pflag: help requested")
+var ErrHelp = errors.New("opflag: help requested")
+
+// SortFlags disables sorting, ensuring flags are printed in the order defined
+var SortFlags bool = true
 
 // ErrorHandling defines how to handle flag parsing errors.
 type ErrorHandling int
@@ -131,6 +134,7 @@ type FlagSet struct {
 	actual        map[string]*Flag
 	formal        map[string]*Flag
 	shorthands    map[byte]*Flag
+	orderedFormal []*Flag
 	args          []string // arguments after flags
 	exitOnError   bool     // does the program exit if there's an error?
 	errorHandling ErrorHandling
@@ -140,15 +144,19 @@ type FlagSet struct {
 
 // A Flag represents the state of a flag.
 type Flag struct {
-	Name      string // name as it appears on command line
-	Shorthand string // one-letter abbreviated flag
-	Usage     string // help message
-	Value     Value  // value as set
-	DefValue  string // default value (as text); for usage message
+	Name          string // name as it appears on command line
+	Shorthand     string // one-letter abbreviated flag
+	Usage         string // help message
+	Value         Value  // value as set
+	DefValue      string // default value (as text); for usage message
+	shorthandOnly bool   // true if the user set only the shorthand option
 }
 
 // sortFlags returns the flags as a slice in lexicographical sorted order.
 func sortFlags(flags map[string]*Flag) []*Flag {
+	if !SortFlags {
+		return CommandLine.orderedFormal
+	}
 	list := make(sort.StringSlice, len(flags))
 	i := 0
 	for _, f := range flags {
@@ -294,10 +302,36 @@ func UnquoteUsage(flag *Flag) (name string, usage string) {
 // defined command-line flags in the set. See the documentation for
 // the global function PrintDefaults for more information.
 func (f *FlagSet) PrintDefaults() {
+	indent := 0
 	f.VisitAll(func(flag *Flag) {
 		s := ""
 		if len(flag.Shorthand) > 0 {
-			s = fmt.Sprintf("  -%s, --%s", flag.Shorthand, flag.Name)
+			if flag.shorthandOnly {
+				s = fmt.Sprintf("  -%s      ", flag.Shorthand)
+			} else {
+				s = fmt.Sprintf("  -%s, --%s", flag.Shorthand, flag.Name)
+			}
+		} else {
+			s = fmt.Sprintf("  --%s", flag.Name)
+		}
+
+		name, _ := UnquoteUsage(flag)
+		if len(name) > 0 {
+			s += " " + name
+		}
+		s += " "
+		if len(s) > indent {
+			indent = len(s)
+		}
+	})
+	f.VisitAll(func(flag *Flag) {
+		s := ""
+		if len(flag.Shorthand) > 0 {
+			if flag.shorthandOnly {
+				s = fmt.Sprintf("  -%s      ", flag.Shorthand)
+			} else {
+				s = fmt.Sprintf("  -%s, --%s", flag.Shorthand, flag.Name)
+			}
 		} else {
 			s = fmt.Sprintf("  --%s", flag.Name)
 		}
@@ -307,7 +341,10 @@ func (f *FlagSet) PrintDefaults() {
 			s += " " + name
 		}
 
-		s += "\n    \t"
+		for i := len(s); i < indent; i++ {
+			s += " "
+		}
+
 		s += usage
 		if !isZeroValue(flag.DefValue) {
 			if _, ok := flag.Value.(*stringValue); ok {
@@ -393,7 +430,11 @@ func (f *FlagSet) Var(value Value, name string, usage string) {
 // Like Var, but accepts a shorthand letter that can be used after a single dash.
 func (f *FlagSet) VarP(value Value, name, shorthand, usage string) {
 	// Remember the default value as a string; it won't change.
-	flag := &Flag{name, shorthand, usage, value, value.String()}
+	flag := &Flag{name, shorthand, usage, value, value.String(), false}
+	if name == "" {
+		flag.shorthandOnly = true
+		flag.Name = flag.Shorthand
+	}
 	_, alreadythere := f.formal[name]
 	if alreadythere {
 		msg := fmt.Sprintf("%s flag redefined: %s", f.name, name)
@@ -403,7 +444,11 @@ func (f *FlagSet) VarP(value Value, name, shorthand, usage string) {
 	if f.formal == nil {
 		f.formal = make(map[string]*Flag)
 	}
+	if f.orderedFormal == nil {
+		f.orderedFormal = make([]*Flag, 0)
+	}
 	f.formal[name] = flag
+	f.orderedFormal = append(f.orderedFormal, flag)
 
 	if len(shorthand) == 0 {
 		return
