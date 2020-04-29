@@ -434,7 +434,9 @@ func (f *FlagSet) VarP(value Value, name, shorthand, usage string) {
 	if name == "" {
 		flag.shorthandOnly = true
 		flag.Name = flag.Shorthand
+		name = shorthand
 	}
+	fmt.Printf("NAME = %s\n", name)
 	_, alreadythere := f.formal[name]
 	if alreadythere {
 		msg := fmt.Sprintf("%s flag redefined: %s", f.name, name)
